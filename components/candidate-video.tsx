@@ -1,240 +1,338 @@
-"use client"
+// components/CandidateVideo.tsx
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Mic, Video, Upload, X, Play, Square } from "lucide-react"
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Mic, Video, Upload, X, Play, Square } from "lucide-react";
 
 interface CandidateVideoProps {
   userInfo: {
-    name: string
-    image: string | null
-  }
+    name: string;
+    image: string | null;
+  };
+  onTranscriptionUpdate: (transcription: string, questionIndex: number) => void;
+  currentQuestionIndex: number;
 }
 
-export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [stream, setStream] = useState<MediaStream | null>(null)
-  const [cameraEnabled, setCameraEnabled] = useState(true)
-  const [micEnabled, setMicEnabled] = useState(true)
-  const [volume, setVolume] = useState(50)
-  const [timeElapsed, setTimeElapsed] = useState(0)
-  const [showOverlayText, setShowOverlayText] = useState(true)
-  const [currentTime, setCurrentTime] = useState<string>("")
-  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [showUploadOverlay, setShowUploadOverlay] = useState(false)
+export default function CandidateVideo({
+  userInfo,
+  onTranscriptionUpdate,
+  currentQuestionIndex,
+}: CandidateVideoProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [micEnabled, setMicEnabled] = useState(true);
+  const [volume, setVolume] = useState(50);
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [showOverlayText, setShowOverlayText] = useState(true);
+  const [currentTime, setCurrentTime] = useState<string>("");
+  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showUploadOverlay, setShowUploadOverlay] = useState(false);
+  const [transcription, setTranscription] = useState<string>("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null>(null);
 
-  // Start camera
+  // Debounce transcription updates to avoid frequent updates
+  const debouncedTranscriptionUpdate = useCallback(
+    (text: string, index: number) => {
+      const timeout = setTimeout(() => {
+        onTranscriptionUpdate(text, index);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    },
+    [onTranscriptionUpdate]
+  );
+
+  // Initialize SpeechRecognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + " ";
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        const combinedTranscript = finalTranscript + interimTranscript;
+        setTranscription(combinedTranscript);
+        setIsTranscribing(true);
+        debouncedTranscriptionUpdate(combinedTranscript, currentQuestionIndex);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setTranscriptionError(
+          event.error === "no-speech"
+            ? "No speech detected. Please speak louder or check your microphone."
+            : "Transcription failed. Please ensure your browser supports speech recognition."
+        );
+        setIsTranscribing(false);
+      };
+
+      recognition.onend = () => {
+        setIsTranscribing(false);
+        if (micEnabled && (cameraEnabled || uploadedVideo) && isPlaying) {
+          recognition.start();
+        }
+      };
+
+      recognitionRef.current = recognition;
+    } else {
+      setTranscriptionError(
+        "Speech recognition is not supported in this browser. Please use Chrome or Edge."
+      );
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [currentQuestionIndex, debouncedTranscriptionUpdate]);
+
+  // Start camera and audio processing
   const startCamera = async () => {
     try {
-      // Clear any uploaded video first
-      setUploadedVideo(null)
-      
+      setUploadedVideo(null);
+      setTranscription("");
+      setTranscriptionError(null);
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: micEnabled,
-      })
+      });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
+        videoRef.current.srcObject = mediaStream;
       }
 
-      setStream(mediaStream)
-      setCameraEnabled(true)
-      setIsPlaying(true)
+      setStream(mediaStream);
+      setCameraEnabled(true);
+      setIsPlaying(true);
+
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      sourceRef.current = source;
+      audioContextRef.current = audioContext;
+
+      if (recognitionRef.current && micEnabled) {
+        recognitionRef.current.start();
+      }
     } catch (err) {
-      console.error("Error accessing camera:", err)
+      console.error("Error accessing camera:", err);
+      setTranscriptionError("Failed to access camera or microphone.");
     }
-  }
+  };
 
   // Stop camera
   const stopCamera = () => {
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop())
+      stream.getTracks().forEach((track) => track.stop());
       if (videoRef.current) {
-        videoRef.current.srcObject = null
+        videoRef.current.srcObject = null;
       }
-      setStream(null)
-      setCameraEnabled(false)
-      setIsPlaying(false)
+      setStream(null);
+      setCameraEnabled(false);
+      setIsPlaying(false);
     }
-  }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
 
   // Toggle camera
   const toggleCamera = () => {
     if (uploadedVideo) {
-      // If we have an uploaded video, remove it and start camera
-      setUploadedVideo(null)
-      startCamera()
+      setUploadedVideo(null);
+      startCamera();
     } else if (cameraEnabled) {
-      stopCamera()
+      stopCamera();
     } else {
-      startCamera()
+      startCamera();
     }
-  }
+  };
 
   // Toggle microphone
   const toggleMic = () => {
-    setMicEnabled(!micEnabled)
+    setMicEnabled(!micEnabled);
 
-    // If camera is already on, update the stream with new audio settings
     if (cameraEnabled && stream && !uploadedVideo) {
-      stopCamera()
-      setTimeout(() => startCamera(), 100)
+      stopCamera();
+      setTimeout(() => startCamera(), 100);
     }
-  }
 
-  // Handle volume change
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0])
-    if (videoRef.current) {
-      videoRef.current.volume = value[0] / 100
+    if (recognitionRef.current) {
+      if (!micEnabled) {
+        recognitionRef.current.start();
+      } else {
+        recognitionRef.current.stop();
+      }
     }
-  }
+  };
 
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file && file.type.startsWith("video/")) {
-      // Stop camera if it's running
-      stopCamera()
-      
-      // Create URL for the uploaded video
-      const videoURL = URL.createObjectURL(file)
-      setUploadedVideo(videoURL)
-      
-      // Reset the file input
+      stopCamera();
+      setTranscription("");
+      setTranscriptionError(null);
+
+      const videoURL = URL.createObjectURL(file);
+      setUploadedVideo(videoURL);
+
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
-      
-      setShowUploadOverlay(false)
-      setIsPlaying(true)
-      
-      // Reset timer
-      setTimeElapsed(0)
-    }
-  }
 
-  // Toggle upload overlay
-  const toggleUploadOverlay = () => {
-    setShowUploadOverlay(!showUploadOverlay)
-  }
+      setShowUploadOverlay(false);
+      setIsPlaying(true);
+      setTimeElapsed(0);
 
-  // Remove uploaded video
-  const removeUploadedVideo = () => {
-    if (uploadedVideo) {
-      URL.revokeObjectURL(uploadedVideo)
-      setUploadedVideo(null)
-      startCamera()
-    }
-  }
-
-  // Update timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setTimeElapsed((prev) => prev + 1)
-      }, 1000)
-    }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isPlaying])
-
-  // Format time as mm:ss:ms
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0")
-    const secs = (seconds % 60).toString().padStart(2, "0")
-    return `${mins}:${secs}:00`
-  }
-
-  // Hide overlay text after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowOverlayText(false)
-    }, 5000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop())
-      }
-      if (uploadedVideo) {
-        URL.revokeObjectURL(uploadedVideo)
-      }
-    }
-  }, [stream, uploadedVideo])
-
-  // Auto-start camera on component mount
-  useEffect(() => {
-    startCamera()
-  }, [])
-
-  // Update current time every minute
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date()
-      const hours = now.getHours().toString().padStart(2, "0")
-      const minutes = now.getMinutes().toString().padStart(2, "0")
-      const month = now.toLocaleString("default", { month: "short" })
-      setCurrentTime(`${month} ${hours}:${minutes}`)
-    }
-
-    // Update immediately
-    updateTime()
-
-    // Then update every minute
-    const interval = setInterval(updateTime, 60000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Handle video timeupdate event
-  useEffect(() => {
-    const handleTimeUpdate = () => {
-      if (videoRef.current && uploadedVideo) {
-        setTimeElapsed(Math.floor(videoRef.current.currentTime))
-      }
-    }
-
-    if (videoRef.current) {
-      videoRef.current.addEventListener('timeupdate', handleTimeUpdate)
-    }
-
-    return () => {
       if (videoRef.current) {
-        videoRef.current.removeEventListener('timeupdate', handleTimeUpdate)
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaElementSource(videoRef.current);
+        sourceRef.current = source;
+        audioContextRef.current = audioContext;
+
+        if (recognitionRef.current && micEnabled) {
+          recognitionRef.current.start();
+        }
       }
     }
-  }, [uploadedVideo])
+  };
 
   // Handle play/pause for uploaded video
   const handleVideoPlayPause = () => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
-        videoRef.current.play()
-        setIsPlaying(true)
+        videoRef.current.play();
+        setIsPlaying(true);
+        if (recognitionRef.current && micEnabled) {
+          recognitionRef.current.start();
+        }
       } else {
-        videoRef.current.pause()
-        setIsPlaying(false)
+        videoRef.current.pause();
+        setIsPlaying(false);
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
       }
     }
-  }
+  };
+
+  // Update timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setTimeElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying]);
+
+  // Format time as mm:ss:ms
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (seconds % 60).toString().padStart(2, "0");
+    return `${mins}:${secs}:00`;
+  };
+
+  // Hide overlay text after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowOverlayText(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      if (uploadedVideo) {
+        URL.revokeObjectURL(uploadedVideo);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [stream, uploadedVideo]);
+
+  // Auto-start camera on component mount
+  useEffect(() => {
+    startCamera();
+  }, []);
+
+  // Update current time every minute
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, "0");
+      const minutes = now.getMinutes().toString().padStart(2, "0");
+      const month = now.toLocaleString("default", { month: "short" });
+      setCurrentTime(`${month} ${hours}:${minutes}`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle video timeupdate event
+  useEffect(() => {
+    const handleTimeUpdate = () => {
+      if (videoRef.current && uploadedVideo) {
+        setTimeElapsed(Math.floor(videoRef.current.currentTime));
+      }
+    };
+
+    if (videoRef.current) {
+      videoRef.current.addEventListener("timeupdate", handleTimeUpdate);
+    }
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.removeEventListener("timeupdate", handleTimeUpdate);
+      }
+    };
+  }, [uploadedVideo]);
 
   return (
     <div className="relative w-full h-full bg-gray-900">
-      {/* Video element */}
       <div className="relative w-full h-full">
         <video
           ref={videoRef}
@@ -246,10 +344,8 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
           src={uploadedVideo || undefined}
           onClick={uploadedVideo ? handleVideoPlayPause : undefined}
         />
-        
-        {/* Play/Pause overlay for uploaded videos */}
         {uploadedVideo && (
-          <div 
+          <div
             className="absolute inset-0 flex items-center justify-center bg-black/20 cursor-pointer"
             onClick={handleVideoPlayPause}
           >
@@ -262,7 +358,6 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
         )}
       </div>
 
-      {/* Upload overlay */}
       {showUploadOverlay && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-10">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full">
@@ -271,7 +366,7 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={toggleUploadOverlay}
+                onClick={() => setShowUploadOverlay(false)}
                 className="border-white/20 bg-black/50 hover:bg-black/70 text-white"
               >
                 <X className="h-4 w-4" />
@@ -291,7 +386,18 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
         </div>
       )}
 
-      {/* Volume slider */}
+      {/* Transcription status overlay */}
+      {transcriptionError && (
+        <div className="absolute top-16 left-0 right-0 p-4 bg-red-500/80 text-white text-center">
+          <p className="text-sm">{transcriptionError}</p>
+        </div>
+      )}
+      {isTranscribing && (
+        <div className="absolute top-16 left-0 right-0 p-4 bg-green-500/80 text-white text-center">
+          <p className="text-sm">Transcribing your response...</p>
+        </div>
+      )}
+
       <div className="absolute right-6 top-1/2 -translate-y-1/2 h-32 flex flex-col items-center">
         <div className="w-1 h-32 bg-white/30 rounded-full relative">
           <div
@@ -304,14 +410,13 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
           min="0"
           max="100"
           value={volume}
-          onChange={(e) => handleVolumeChange([Number.parseInt(e.target.value)])}
+          onChange={(e) => setVolume(Number.parseInt(e.target.value))}
           className="w-24 h-4 mt-2 -rotate-90 absolute opacity-0 cursor-pointer"
           style={{ transform: "translateY(60px) rotate(-90deg)" }}
         />
         <div className="w-4 h-4 bg-white rounded-full mt-2 cursor-pointer"></div>
       </div>
 
-      {/* Overlay with text - hidden after 5 seconds */}
       {showOverlayText && (
         <div className="absolute bottom-16 left-0 right-0 p-4 bg-black/40 text-white">
           <p className="text-sm text-center">
@@ -320,7 +425,6 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
         </div>
       )}
 
-      {/* Overlay with controls */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
         <div className="flex justify-between items-center">
           <div>
@@ -346,7 +450,7 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
             <Button
               variant="outline"
               size="icon"
-              onClick={toggleUploadOverlay}
+              onClick={() => setShowUploadOverlay(true)}
               className="border-white/20 bg-black/50 hover:bg-black/70 text-green-400"
             >
               <Upload className="h-4 w-4" />
@@ -359,16 +463,15 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
                   onClick={handleVideoPlayPause}
                   className="border-white/20 bg-black/50 hover:bg-black/70 text-green-400"
                 >
-                  {isPlaying ? (
-                    <Square className="h-3 w-3" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
+                  {isPlaying ? <Square className="h-3 w-3" /> : <Play className="h-4 w-4" />}
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={removeUploadedVideo}
+                  onClick={() => {
+                    setUploadedVideo(null);
+                    startCamera();
+                  }}
                   className="border-white/20 bg-black/50 hover:bg-black/70 text-red-400"
                 >
                   <X className="h-4 w-4" />
@@ -379,7 +482,6 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
         </div>
       </div>
 
-      {/* User info overlay */}
       <div className="absolute top-4 left-4 flex items-center">
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
           {userInfo.image ? (
@@ -399,10 +501,16 @@ export default function CandidateVideo({ userInfo }: CandidateVideoProps) {
             {userInfo.name} <span className="opacity-70">{currentTime}</span>
           </p>
           <p className="text-xs text-white/70">
-            {uploadedVideo ? (isPlaying ? "Playing uploaded video" : "Paused") : (isPlaying ? "Online" : "Camera off")}
+            {uploadedVideo
+              ? isPlaying
+                ? "Playing uploaded video"
+                : "Paused"
+              : isPlaying
+              ? "Online"
+              : "Camera off"}
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }
