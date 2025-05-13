@@ -96,7 +96,7 @@ export default function Dashboard({ userInfo }: DashboardProps) {
   return (
     <div className="flex h-screen" style={{ backgroundColor: "#D3D3D3" }}>
       {/* Left Section: QuestionList and AIResults */}
-      <div className="w-[20%] flex flex-col p-4">
+      <div className="w-[27%] flex flex-col p-2">
         <div className="bg-white rounded-lg shadow-lg mb-4 p-4">
           <QuestionList
             questions={questions}
@@ -192,11 +192,11 @@ export default function Dashboard({ userInfo }: DashboardProps) {
 
       {/* Right Section: Toggleable Chat Interface */}
       <div
-        className={`fixed top-0 right-0 h-full w-[300px] bg-white shadow-xl transform transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-[690px] w-[300px] bg-white  transform transition-transform duration-300 ${
           isChatOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+        <div className="flex justify-between items-center p-4">
           <h3 className="text-lg font-medium text-black">Chat</h3>
           <Button
             onClick={toggleChat}
@@ -205,7 +205,7 @@ export default function Dashboard({ userInfo }: DashboardProps) {
             <MessageCircle className="h-5 w-5" />
           </Button>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 p-1 overflow-y-auto">
           <ChatInterface userInfo={userInfo} />
         </div>
       </div>

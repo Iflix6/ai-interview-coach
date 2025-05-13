@@ -136,7 +136,7 @@ export default function ChatInterface({ userInfo }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col h-[500px] border rounded-lg">
+    <div className="flex flex-col h-[600px] border rounded-lg">
       {/* Header */}
       <div className="p-3 border-b border-gray-200 shrink-0">
         <div className="flex items-center">

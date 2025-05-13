@@ -114,15 +114,13 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
   if (!showResults) {
     return (
       <div className="h-full flex flex-col">
-        <div className="mb-4">
-          <h3 className="text-sm font-medium text-gray-500">AI Video Score Detail</h3>
+        <div className="mb-1">
+          <h3 className="text-xs font-medium text-gray-500">AI Video Score Detail</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center text-center p-6 bg-gray-50 rounded-lg">
+        <div className="flex-1 flex items-center justify-center text-center p-1 bg-gray-50 rounded-lg">
           <div>
-            <p className="text-gray-500 mb-2">Complete the interview to see your results</p>
-            <p className="text-sm text-gray-400">
-              The AI will analyze your performance and provide detailed feedback
-            </p>
+            <p className="text-gray-500 mb-1 text-xs">Complete interview to see results</p>
+            <p className="text-xs text-gray-400">AI will analyze and provide feedback</p>
           </div>
         </div>
       </div>
@@ -131,58 +129,58 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-medium text-gray-500">AI Video Score Detail</h3>
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="text-xs font-medium text-gray-500">AI Video Score Detail</h3>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-4">
+      <div className="flex-1 grid grid-cols-2 gap-1">
         <div className="flex flex-col">
-          <div className="text-center mb-4">
+          <div className="text-center mb-1">
             {isLoading ? (
               <div className="text-center">
-                <p className="text-gray-500">Analyzing your performance...</p>
+                <p className="text-gray-500 text-xs">Analyzing...</p>
               </div>
             ) : (
               <>
-                <div className="text-5xl font-bold text-gray-800">{scoreData.overall}%</div>
-                <h4 className="text-lg font-medium mt-2">AI Video Score Summary</h4>
-                <p className="text-sm text-gray-600 mt-2">{summary}</p>
+                <div className="text-xl font-bold text-gray-800">{scoreData.overall}%</div>
+                <h4 className="text-xs font-medium mt-1">AI Video Score Summary</h4>
+                <p className="text-xs text-gray-600 mt-1">{summary}</p>
               </>
             )}
           </div>
 
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-1 mt-1">
             <Button
               variant="outline"
-              className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
+              className="flex-1 border-green-500 text-green-600 hover:bg-green-50 text-xs"
               disabled={isLoading}
             >
-              <Check className="mr-2 h-4 w-4" /> Accept
+              <Check className="mr-0.5 h-2 w-2" /> Accept
             </Button>
             <Button
               variant="outline"
-              className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+              className="flex-1 border-red-500 text-red-600 hover:bg-red-50 text-xs"
               disabled={isLoading}
             >
-              <X className="mr-2 h-4 w-4" /> Reject
+              <X className="mr-0.5 h-2 w-2" /> Reject
             </Button>
           </div>
 
           <Button
-            className="mt-4 bg-green-500 hover:bg-green-600 text-white"
+            className="mt-1 bg-green-500 hover:bg-green-600 text-white text-xs"
             disabled={isLoading}
           >
             See Next
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-1">
           <div className="flex flex-col items-center">
             <div className="relative inline-flex">
-              <svg className="w-24 h-24" viewBox="0 0 100 100">
+              <svg className="w-10 h-10" viewBox="0 0 100 100">
                 <circle
                   className="text-gray-200"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   stroke="currentColor"
                   fill="transparent"
                   r="40"
@@ -191,7 +189,7 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
                 <circle
                   className="text-green-500"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   strokeDasharray={`${2 * Math.PI * 40}`}
                   strokeDashoffset={`${2 * Math.PI * 40 * (1 - scoreData.professionalism / 100)}`}
                   strokeLinecap="round"
@@ -203,18 +201,18 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
               </svg>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="text-2xl font-bold">{scoreData.professionalism}%</span>
+                <span className="text-xs font-bold">{scoreData.professionalism}%</span>
               </div>
             </div>
-            <p className="mt-2 font-medium">Professionalism</p>
+            <p className="mt-0.5 font-medium text-xs">Professionalism</p>
           </div>
 
           <div className="flex flex-col items-center">
             <div className="relative inline-flex">
-              <svg className="w-24 h-24" viewBox="0 0 100 100">
+              <svg className="w-10 h-10" viewBox="0 0 100 100">
                 <circle
                   className="text-gray-200"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   stroke="currentColor"
                   fill="transparent"
                   r="40"
@@ -223,7 +221,7 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
                 <circle
                   className="text-green-500"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   strokeDasharray={`${2 * Math.PI * 40}`}
                   strokeDashoffset={`${2 * Math.PI * 40 * (1 - scoreData.businessAcumen / 100)}`}
                   strokeLinecap="round"
@@ -235,18 +233,18 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
               </svg>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="text-2xl font-bold">{scoreData.businessAcumen}%</span>
+                <span className="text-xs font-bold">{scoreData.businessAcumen}%</span>
               </div>
             </div>
-            <p className="mt-2 font-medium">Business Acumen</p>
+            <p className="mt-0.5 font-medium text-xs">Business Acumen</p>
           </div>
 
           <div className="flex flex-col items-center">
             <div className="relative inline-flex">
-              <svg className="w-24 h-24" viewBox="0 0 100 100">
+              <svg className="w-10 h-10" viewBox="0 0 100 100">
                 <circle
                   className="text-gray-200"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   stroke="currentColor"
                   fill="transparent"
                   r="40"
@@ -255,7 +253,7 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
                 <circle
                   className="text-orange-500"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   strokeDasharray={`${2 * Math.PI * 40}`}
                   strokeDashoffset={`${2 * Math.PI * 40 * (1 - scoreData.opportunistic / 100)}`}
                   strokeLinecap="round"
@@ -267,18 +265,18 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
               </svg>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="text-2xl font-bold">{scoreData.opportunistic}%</span>
+                <span className="text-xs font-bold">{scoreData.opportunistic}%</span>
               </div>
             </div>
-            <p className="mt-2 font-medium">Opportunistic</p>
+            <p className="mt-0.5 font-medium text-xs">Opportunistic</p>
           </div>
 
           <div className="flex flex-col items-center">
             <div className="relative inline-flex">
-              <svg className="w-24 h-24" viewBox="0 0 100 100">
+              <svg className="w-10 h-10" viewBox="0 0 100 100">
                 <circle
                   className="text-gray-200"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   stroke="currentColor"
                   fill="transparent"
                   r="40"
@@ -287,7 +285,7 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
                 <circle
                   className="text-green-500"
-                  strokeWidth="8"
+                  strokeWidth="3"
                   strokeDasharray={`${2 * Math.PI * 40}`}
                   strokeDashoffset={`${2 * Math.PI * 40 * (1 - scoreData.closingTechnique / 100)}`}
                   strokeLinecap="round"
@@ -299,10 +297,10 @@ export default function AIResults({ showResults, answers }: AIResultsProps) {
                 />
               </svg>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="text-2xl font-bold">{scoreData.closingTechnique}%</span>
+                <span className="text-xs font-bold">{scoreData.closingTechnique}%</span>
               </div>
             </div>
-            <p className="mt-2 font-medium">Closing Technique</p>
+            <p className="mt-0.5 font-medium text-xs">Closing Technique</p>
           </div>
         </div>
       </div>
